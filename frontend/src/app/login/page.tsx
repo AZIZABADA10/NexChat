@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Link from 'next/link';
-import { LogIn, Loader2 } from 'lucide-react';
+import { LogIn, Loader2, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
+import Button from '@/components/ui/Button';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -22,79 +24,85 @@ export default function LoginPage() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      if (data.user.role === 'ADMIN') {
-        router.push('/admin');
-      } else {
-        router.push('/chat');
-      }
+      router.push(data.user.role === 'ADMIN' ? '/admin' : '/chat');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || 'Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 to-purple-900 p-4">
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-2xl border border-white/20">
-        <div className="flex flex-col items-center mb-8">
-          <div className="p-3 bg-indigo-500 rounded-full mb-4 shadow-lg shadow-indigo-500/50">
-            <LogIn className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">NexChat</h1>
-          <p className="text-indigo-200 mt-2">Welcome back!</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-[#020617] p-4 relative overflow-hidden">
+      {/* Background blobs */}
+      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-500/10 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-500/10 rounded-full blur-[120px]" />
 
-        {error && (
-          <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-lg mb-6 text-sm">
-            {error}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md relative z-10"
+      >
+        <div className="glass rounded-[2.5rem] p-10 shadow-2xl border border-white/5">
+          <div className="flex flex-col items-center mb-10 text-center">
+            <div className="p-4 bg-linear-to-br from-indigo-500 to-purple-600 rounded-3xl mb-6 shadow-xl shadow-indigo-500/20">
+              <LogIn className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-4xl font-black text-white tracking-tighter mb-2">NexChat</h1>
+            <p className="text-slate-400 font-light flex items-center gap-2">
+              <Sparkles size={14} className="text-indigo-400" /> Premium real-time messaging
+            </p>
           </div>
-        )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-indigo-200 mb-1">Email Address</label>
-            <input
-              type="email"
-              required
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-              placeholder="aziz@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-indigo-200 mb-1">Password</label>
-            <input
-              type="password"
-              required
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center group"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-              <>
-                Login 
-                <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
-              </>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
+              <input
+                type="email"
+                required
+                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-sm"
+                placeholder="aziz@nexchat.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Password</label>
+              <input
+                type="password"
+                required
+                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-sm"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+
+            {error && (
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 text-xs text-center border border-red-500/20 bg-red-500/5 py-2 rounded-lg">
+                {error}
+              </motion.p>
             )}
-          </button>
-        </form>
 
-        <p className="text-center text-indigo-200 mt-8 text-sm">
-          Don't have an account? {' '}
-          <Link href="/register" className="text-indigo-400 hover:text-indigo-300 font-semibold underline underline-offset-4">
-            Register here
-          </Link>
-        </p>
-      </div>
+            <Button
+              type="submit"
+              loading={loading}
+              className="w-full py-4 text-base font-bold rounded-2xl mt-4"
+            >
+              Sign In
+            </Button>
+          </form>
+
+          <div className="mt-10 pt-10 border-t border-white/5 text-center">
+            <p className="text-slate-500 text-sm">
+              Don't have an account? {' '}
+              <Link href="/register" className="text-white hover:text-indigo-400 font-bold transition-colors">
+                Create one for free
+              </Link>
+            </p>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
