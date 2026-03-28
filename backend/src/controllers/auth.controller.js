@@ -40,6 +40,10 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    if (user.isBanned) {
+      return res.status(403).json({ message: "Your account has been banned. Please contact the administrator." });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
