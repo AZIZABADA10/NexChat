@@ -24,8 +24,13 @@ app.use(express.json());
 // Routes
 const authRoutes = require('./routes/auth.routes');
 const messageRoutes = require('./routes/message.routes');
+const adminRoutes = require('./routes/admin.routes');
+const groupRoutes = require('./routes/group.routes');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/groups', groupRoutes);
 
 // Socket.io Logic
 const setupSockets = require('./sockets/chat.socket');
