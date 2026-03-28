@@ -57,33 +57,45 @@ export default function MessageBubble({ message, currentUserId, onReact, onReply
           </div>
 
           {/* Quick Actions (Hover) */}
-          <div className={`absolute top-0 ${isMine ? '-left-12' : '-right-12'} opacity-0 group-hover:opacity-100 transition-all flex flex-col gap-1`}>
+          <div className={`absolute top-0 ${isMine ? '-left-12' : '-right-12'} opacity-0 group-hover:opacity-100 transition-all flex flex-col gap-1 z-20`}>
+            {['👍', '❤️', '😂', '😮'].map(emo => (
+              <button 
+                key={emo} 
+                onClick={() => onReact(message.id, emo)}
+                className="w-7 h-7 rounded-full glass-light hover:bg-white/20 flex items-center justify-center text-[10px] shadow-sm"
+              >
+                {emo}
+              </button>
+            ))}
             <button 
               onClick={() => onReply(message)}
-              className="p-1.5 glass-light rounded-full text-slate-400 hover:text-white transition-colors"
+              className="w-7 h-7 rounded-full glass-light text-slate-400 hover:text-white flex items-center justify-center shadow-sm"
             >
-              <Reply size={14} />
-            </button>
-            <button className="p-1.5 glass-light rounded-full text-slate-400 hover:text-white transition-colors">
-              <Smile size={14} />
+              <Reply size={12} />
             </button>
           </div>
 
-          {/* Reactions */}
-          <div className={`flex gap-1 mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
-            <AnimatePresence>
-              {message.reactions?.map((r: any) => (
-                <motion.span 
+          {/* Reactions Display */}
+          {message.reactions && message.reactions.length > 0 && (
+            <div className={`flex flex-wrap gap-1 mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+              {Object.entries(
+                message.reactions.reduce((acc: any, r: any) => {
+                  acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                  return acc;
+                }, {})
+              ).map(([emoji, count]: any) => (
+                <motion.div
+                  key={emoji}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  key={r.id} 
-                  className="bg-slate-800/80 backdrop-blur-md rounded-full px-1.5 py-0.5 text-[11px] border border-white/10 shadow-lg cursor-default"
+                  className="px-2 py-0.5 rounded-full glass border border-white/10 text-[10px] flex items-center gap-1.5 shadow-sm"
                 >
-                  {r.emoji}
-                </motion.span>
+                  <span className="leading-none">{emoji}</span>
+                  <span className="font-bold text-slate-400">{count}</span>
+                </motion.div>
               ))}
-            </AnimatePresence>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
