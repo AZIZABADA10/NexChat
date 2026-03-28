@@ -33,6 +33,7 @@ model User {
   password  String
   role      Role     @default(USER)
   status    Status   @default(OFFLINE)
+  isBanned  Boolean  @default(false)
   lastSeen  DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -40,6 +41,7 @@ model User {
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
   reactions        Reaction[]
+  groups           GroupMember[]
 }
 
 model Message {
@@ -47,16 +49,40 @@ model Message {
   content    String
   status     MessageStatus @default(SENT)
   senderId   String
-  receiverId String
+  receiverId String?
+  groupId    String?
   replyToId  String?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
   sender    User     @relation("SentMessages", fields: [senderId], references: [id])
-  receiver  User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiver  User?    @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  group     Group?   @relation(fields: [groupId], references: [id])
   replyTo   Message? @relation("MessageReplies", fields: [replyToId], references: [id])
   replies   Message[] @relation("MessageReplies")
   reactions Reaction[]
+}
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  GroupMember[]
+  messages Message[]
+}
+
+model GroupMember {
+  userId  String
+  groupId String
+  role    String @default("MEMBER") // ADMIN, MEMBER
+
+  user  User  @relation(fields: [userId], references: [id])
+  group Group @relation(fields: [groupId], references: [id])
+
+  @@id([userId, groupId])
 }
 
 model Reaction {
@@ -68,4 +94,12 @@ model Reaction {
 
   message Message @relation(fields: [messageId], references: [id])
   user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
+}
+
+model Setting {
+  id    String @id @default(uuid())
+  key   String @unique // e.g., "STEALTH_MODE"
+  value String // e.g., "true", "false"
 }
