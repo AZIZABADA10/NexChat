@@ -7,11 +7,16 @@ import { getSocket, disconnectSocket } from '@/lib/socket';
 import api from '@/lib/api';
 import ChatLayout from '@/components/layout/ChatLayout';
 import Sidebar from '@/components/chat/Sidebar';
-import ChatWindow from '@/components/chat/ChatWindow';
+import DashboardStats from '@/components/admin/DashboardStats';
+import UserManagement from '@/components/admin/UserManagement';
+import GroupManagement from '@/components/admin/GroupManagement';
+import AdminSettings from '@/components/admin/AdminSettings';
+import { BarChart3, Users, LayoutGrid, Settings, MessageSquare } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-export default function AdminDashboard() {
-  const { setMe, setUsers, activeUser, setActiveUser, setMessages, addMessage, updateMessageStatus, updateUserStatus, addReaction } = useChatStore();
-  const [replyTo, setReplyTo] = useState<any>(null);
+export default function AdminDashboardPage() {
+  const { setMe, setUsers, activeUser } = useChatStore();
+  const [activeTab, setActiveTab] = useState('stats');
   const router = useRouter();
 
   useEffect(() => {
@@ -20,7 +25,8 @@ export default function AdminDashboard() {
       router.push('/login');
       return;
     }
-    setMe(JSON.parse(userStr));
+    const me = JSON.parse(userStr);
+    setMe(me);
 
     const fetchData = async () => {
       try {
@@ -30,69 +36,98 @@ export default function AdminDashboard() {
         console.error(err);
       }
     };
-
     fetchData();
 
-    const socket = getSocket();
-    socket.connect();
-
-    socket.on('receive_message', (message) => {
-      // Logic for adding message if active user matches, or updating unread count
-      // This is a simplified version, ideally handle activeUser check here
-      addMessage(message);
-    });
-
-    socket.on('user_presence', ({ userId, status }) => {
-      updateUserStatus(userId, status);
-    });
-
-    socket.on('receive_reaction', ({ messageId, reaction }) => {
-      addReaction(messageId, reaction);
-    });
-
-    return () => {
-      socket.off('receive_message');
-      socket.off('user_presence');
-      socket.off('receive_reaction');
-      disconnectSocket();
-    };
+    getSocket().connect();
+    return () => disconnectSocket();
   }, []);
 
-  // Effect to fetch history when activeUser changes
-  useEffect(() => {
-    if (activeUser) {
-      const fetchHistory = async () => {
-        const { data } = await api.get(`/messages/history/${activeUser.id}`);
-        setMessages(data);
-        
-        // Mark as seen
-        const unseenIds = data.filter((m: any) => m.senderId === activeUser.id && m.status !== 'SEEN').map((m: any) => m.id);
-        if (unseenIds.length > 0) {
-          getSocket().emit('message_seen', { messageIds: unseenIds, senderId: activeUser.id });
-        }
-      };
-      fetchHistory();
-    }
-  }, [activeUser]);
-
-  const handleSendMessage = (content: string) => {
-    if (!activeUser) return;
-    getSocket().emit('send_message', {
-      receiverId: activeUser.id,
-      content,
-      replyToId: replyTo?.id
-    });
-  };
+  const tabs = [
+    { id: 'stats', label: 'Overview', icon: LayoutGrid },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'groups', label: 'Groups', icon: MessageSquare },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
 
   return (
-    <ChatLayout sidebar={<Sidebar onLogout={() => { localStorage.clear(); router.push('/login'); }} />}>
-      <ChatWindow 
-        onSendMessage={handleSendMessage} 
-        onTyping={(t) => getSocket().emit('typing', { receiverId: activeUser?.id, isTyping: t })}
-        onReact={(id, emo) => getSocket().emit('send_reaction', { messageId: id, emoji: emo })}
-        replyTo={replyTo}
-        setReplyTo={setReplyTo}
-      />
-    </ChatLayout>
+    <div className="h-screen w-full flex bg-[#020617] overflow-hidden text-slate-100">
+      {/* Mini Sidebar Nav */}
+      <div className="w-20 sm:w-24 h-full glass border-r border-white/5 flex flex-col items-center py-8 gap-10 z-30">
+        <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <BarChart3 className="text-white" size={24} />
+        </div>
+        
+        <div className="flex-1 flex flex-col gap-4">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`p-4 rounded-2xl transition-all relative group ${
+                activeTab === tab.id ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'
+              }`}
+            >
+              <tab.icon size={22} />
+              {activeTab === tab.id && (
+                <motion.div layoutId="tabIndicator" className="absolute left-0 top-4 bottom-4 w-1 bg-indigo-500 rounded-r-full" />
+              )}
+              <span className="absolute left-full ml-4 px-2 py-1 bg-slate-800 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                {tab.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <button 
+          onClick={() => router.push('/chat')}
+          className="p-4 text-slate-500 hover:text-white transition-colors"
+          title="Open Chat"
+        >
+          <MessageSquare size={22} />
+        </button>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 h-full overflow-y-auto custom-scrollbar relative">
+        <div className="max-w-7xl mx-auto p-6 sm:p-10">
+          {/* Header */}
+          <header className="mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div>
+              <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-[0.3em] mb-2">Management Suite</p>
+              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter">
+                {tabs.find(t => t.id === activeTab)?.label}
+              </h1>
+            </div>
+            <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/5 px-4 pr-2">
+               <div className="text-right hidden sm:block">
+                  <p className="text-xs font-bold text-white leading-none">Admin Area</p>
+                  <p className="text-[10px] text-slate-500 font-medium">Verified Session</p>
+               </div>
+               <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-sm font-black text-indigo-400 border border-white/5">
+                A
+               </div>
+            </div>
+          </header>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'stats' && <DashboardStats />}
+              {activeTab === 'users' && <UserManagement />}
+              {activeTab === 'groups' && <GroupManagement />}
+              {activeTab === 'settings' && <AdminSettings />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Decor */}
+        <div className="fixed top-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
+        <div className="fixed bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-500/5 rounded-full blur-[120px] pointer-events-none" />
+      </div>
+    </div>
   );
 }
