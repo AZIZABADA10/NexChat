@@ -5,7 +5,7 @@ import { useChatStore } from '@/store/useChatStore';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import Avatar from '@/components/ui/Avatar';
-import { MessageSquare, ShieldCheck, MoreVertical, Phone, Video } from 'lucide-react';
+import { MessageSquare, ShieldCheck, MoreVertical, Phone, Video, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ChatWindowProps {
@@ -39,25 +39,31 @@ export default function ChatWindow({ onSendMessage, onTyping, onReact, replyTo, 
         </motion.div>
         <h2 className="text-2xl font-bold text-white mb-2">Your conversations</h2>
         <p className="text-slate-400 max-w-sm font-light">
-          Select a user to start a secure, real-time conversation. All messages are encrypted and private.
+          Select a user or group to start a secure, real-time conversation.
         </p>
-        <div className="mt-12 flex items-center gap-2 text-[10px] text-slate-600 uppercase tracking-widest font-bold">
-          <ShieldCheck size={12} /> Securely connected to NexChat
-        </div>
       </div>
     );
   }
+
+  const isGroup = activeUser.role === 'GROUP';
+  const groupUser = activeUser as any;
 
   return (
     <div className="h-full flex flex-col bg-[#020617]/30">
       {/* Header */}
       <div className="px-6 py-4 glass border-b border-white/5 flex items-center justify-between z-10">
         <div className="flex items-center gap-4">
-          <Avatar name={activeUser.name} status={activeUser.status} size="lg" />
+          {isGroup ? (
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/10">
+              <Users size={24} className="text-indigo-400" />
+            </div>
+          ) : (
+            <Avatar name={activeUser.name} status={activeUser.status} size="lg" />
+          )}
           <div>
             <h3 className="font-bold text-white tracking-tight">{activeUser.name}</h3>
-            <p className="text-xs text-indigo-400 font-medium">
-              {activeUser.status === 'ONLINE' ? 'Active now' : 'Logged out'}
+            <p className="text-xs text-indigo-400 font-medium lowercase tracking-tighter">
+              {isGroup ? `${groupUser.members?.length || 0} members` : (activeUser.status === 'ONLINE' ? 'Active now' : 'Logged out')}
             </p>
           </div>
         </div>
