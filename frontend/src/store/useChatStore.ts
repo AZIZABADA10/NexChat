@@ -60,7 +60,15 @@ export const useChatStore = create<ChatState>((set) => ({
   setIsTyping: (isTyping) => set({ isTyping }),
   addReaction: (messageId, reaction) => set((state) => ({
     messages: state.messages.map(m => 
-      m.id === messageId ? { ...m, reactions: [...(m.reactions || []), reaction] } : m
+      m.id === messageId 
+        ? { 
+            ...m, 
+            reactions: [
+              ...(m.reactions?.filter(r => r.userId !== reaction.userId) || []), 
+              reaction
+            ] 
+          } 
+        : m
     )
   })),
 }));
