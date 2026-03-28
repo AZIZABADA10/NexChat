@@ -23,35 +23,21 @@ export default function UserChatPage() {
     const loggedInUser = JSON.parse(userStr);
     setMe(loggedInUser);
 
-    const initChat = async () => {
-      try {
-        const { data: adminUser } = await api.get('/messages/admin');
-        setUsers([adminUser]);
-        setActiveUser(adminUser);
-
-        const { data: history } = await api.get(`/messages/history/${adminUser.id}`);
-        setMessages(history);
-
-        const socket = getSocket();
-        socket.connect();
-
-        // Mark all as seen
-        const unseenIds = history.filter((m: any) => m.senderId === adminUser.id && m.status !== 'SEEN').map((m: any) => m.id);
-        if (unseenIds.length > 0) {
-          socket.emit('message_seen', { messageIds: unseenIds, senderId: adminUser.id });
-        }
-      } catch (err) {
-        console.error("Failed to load admin or history", err);
-      }
-    };
-
-    initChat();
-
     const socket = getSocket();
-    
+    socket.connect();
+
+    // Listeners
     socket.on('receive_message', (message) => {
-      addMessage(message);
-      socket.emit('message_seen', { messageIds: [message.id], senderId: message.senderId });
+      if (activeUser?.id === message.senderId || activeUser?.id === message.receiverId) {
+        addMessage(message);
+        socket.emit('message_seen', { messageIds: [message.id], senderId: message.senderId });
+      }
+    });
+
+    socket.on('receive_group_message', (message) => {
+      if (activeUser?.id === message.groupId) {
+        addMessage(message);
+      }
     });
 
     socket.on('message_status_update', ({ messageId, status }) => {
@@ -66,32 +52,69 @@ export default function UserChatPage() {
       addReaction(messageId, reaction);
     });
 
-    socket.on('user_presence', ({ userId, status }) => {
-      // update user status logic
-    });
-
     return () => {
       socket.off('receive_message');
+      socket.off('receive_group_message');
       socket.off('message_status_update');
       socket.off('user_typing');
       socket.off('receive_reaction');
-      socket.off('user_presence');
       disconnectSocket();
     };
+  }, [activeUser]);
+
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        const { data: convs } = await api.get('/messages/conversations');
+        setUsers(convs);
+
+        const { data: groups } = await api.get('/groups/my');
+        const socket = getSocket();
+        socket.emit('join_groups', groups.map((g: any) => g.id));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    initData();
   }, []);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!activeUser) return;
+      try {
+        const url = activeUser.role === 'GROUP' 
+          ? `/groups/${activeUser.id}/messages` 
+          : `/messages/history/${activeUser.id}`;
+        const { data } = await api.get(url);
+        setMessages(data);
+        
+        if (activeUser.role !== 'GROUP') {
+           const unseenIds = data.filter((m: any) => m.senderId === activeUser.id && m.status !== 'SEEN').map((m: any) => m.id);
+           if (unseenIds.length > 0) {
+             getSocket().emit('message_seen', { messageIds: unseenIds, senderId: activeUser.id });
+           }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchHistory();
+  }, [activeUser]);
 
   const handleSendMessage = (content: string) => {
     if (!activeUser) return;
     const socket = getSocket();
+    const isGroup = activeUser.role === 'GROUP';
     socket.emit('send_message', {
-      receiverId: activeUser.id,
+      receiverId: isGroup ? null : activeUser.id,
+      groupId: isGroup ? activeUser.id : null,
       content,
       replyToId: replyTo?.id
     });
   };
 
   const handleTyping = (typing: boolean) => {
-    if (!activeUser) return;
+    if (!activeUser || activeUser.role === 'GROUP') return;
     const socket = getSocket();
     socket.emit('typing', { receiverId: activeUser.id, isTyping: typing });
   };
